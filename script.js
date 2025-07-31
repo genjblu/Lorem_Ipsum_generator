@@ -6,60 +6,101 @@ function getRandomInt(max) {
 
 function displayRandomWords(count = 10, targetElementId = 'random-words-output') {
     const outputElement = document.getElementById(targetElementId);
+    const copyButton = document.getElementById('copy-button'); // Получаем кнопку копирования
+
     if (!outputElement) {
         console.error(`Элемент с ID '${targetElementId}' не найден.`);
+        if (copyButton) copyButton.style.display = 'none'; // Скрываем кнопку, если нет элемента вывода
         return;
     }
 
     const actualCount = Math.max(0, parseInt(count, 10) || 0);
 
     let generatedText = [];
+    if (actualCount === 0) { // Если 0 слов, то текст пустой
+        outputElement.textContent = '';
+        if (copyButton) copyButton.style.display = 'none'; // Скрываем кнопку, если нет текста
+        return;
+    }
+
     for (let i = 0; i < actualCount; i++) {
         const randomIndex = getRandomInt(words.length);
         let word = words[randomIndex];
 
-        // Добавляем запятую с некоторой вероятностью
-        // Например, 20% шанс на запятую после слова, если это не последнее слово
-        if (i < actualCount - 1 && getRandomInt(100) < 20) { // 20% шанс на запятую
+        if (i < actualCount - 1 && getRandomInt(100) < 20) {
             word += ',';
         }
         generatedText.push(word);
     }
 
-    // Соединяем слова пробелами
     let finalString = generatedText.join(' ');
 
-    // Добавляем точку в конце, если текст не пустой
     if (finalString.length > 0) {
-        // Убираем возможную запятую перед точкой, если она оказалась последней
         if (finalString.endsWith(',')) {
-            finalString = finalString.slice(0, -1); // Удаляем последнюю запятую
+            finalString = finalString.slice(0, -1);
         }
         finalString += '.';
     }
 
     outputElement.textContent = finalString;
+
+    // Показываем кнопку копирования после успешной генерации текста
+    if (copyButton) {
+        copyButton.style.display = 'block'; // Или 'inline-block', если нужно, чтобы она была в одну строку с чем-то
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const inputEl = document.getElementById("user-text");
     const userForm = document.getElementById('user-form');
     const outputMessageEl = document.getElementById('output-message');
+    const copyButton = document.getElementById('copy-button'); // Получаем кнопку здесь тоже
+    const randomWordsOutput = document.getElementById('random-words-output');
 
-    userForm.addEventListener('submit', (event) => {
+    // Если хотите, чтобы кнопка копирования всегда была скрыта при первой загрузке,
+    // и появлялась только после первой генерации:
+    if (copyButton) {
+        copyButton.style.display = 'none';
+    }
+
+
+    userForm.addEventListener('submit', async (event) => { // Добавляем async
         event.preventDefault();
 
         const inputData = inputEl.value;
         const numberOfWordsToGenerate = parseInt(inputData, 10);
 
+        outputMessageEl.classList.remove('error');
+
         if (isNaN(numberOfWordsToGenerate) || numberOfWordsToGenerate <= 0) {
             outputMessageEl.textContent = 'Пожалуйста, введите положительное число для количества слов.';
-            document.getElementById('random-words-output').textContent = '';
+            outputMessageEl.classList.add('error');
+            randomWordsOutput.textContent = ''; // Очищаем текст
+            if (copyButton) copyButton.style.display = 'none'; // Скрываем кнопку, если ошибка
         } else {
             outputMessageEl.textContent = `Вы запросили: ${numberOfWordsToGenerate} слов.`;
             displayRandomWords(numberOfWordsToGenerate, 'random-words-output');
+            // Кнопка copyButton уже будет показана внутри displayRandomWords
         }
 
         inputEl.value = '';
     });
+
+    // Обработчик события для кнопки копирования
+    if (copyButton) {
+        copyButton.addEventListener('click', async () => {
+            const textToCopy = randomWordsOutput.textContent;
+
+            try {
+                // Используем Clipboard API для копирования
+                await navigator.clipboard.writeText(textToCopy);
+                outputMessageEl.textContent = 'Текст успешно скопирован!';
+                outputMessageEl.classList.remove('error');
+            } catch (err) {
+                console.error('Не удалось скопировать текст:', err);
+                outputMessageEl.textContent = 'Не удалось скопировать текст (возможно, браузер не разрешает).';
+                outputMessageEl.classList.add('error');
+            }
+        });
+    }
 });
